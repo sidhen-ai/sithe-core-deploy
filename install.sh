@@ -73,11 +73,11 @@ if [ -z "$GHCR_TOKEN" ]; then
 fi
 
 # Validate token format (basic check)
-if [[ ! "$GHCR_TOKEN" =~ ^ghp_[a-zA-Z0-9]{36}$ ]]; then
+if [[ ! "$GHCR_TOKEN" =~ ^ghp_[a-zA-Z0-9]+$ ]]; then
     echo -e "${YELLOW}Warning: Token format may be invalid${NC}"
     echo "Expected format: ghp_xxxx... (Classic Personal Access Token)"
     echo ""
-    echo "Note: Fine-grained tokens do not support package access yet."
+    echo "Note: Fine-grained tokens (github_pat_) do not support package access yet."
     echo "Please use a Classic token with 'read:packages' scope."
     if [ "$DRY_RUN" != "true" ]; then
         read -p "Continue anyway? (y/N): " -n 1 -r
@@ -136,13 +136,22 @@ if [ "$DRY_RUN" = "true" ]; then
         echo -e "${YELLOW}  [DRY RUN] Token format may be invalid${NC}"
     fi
 else
-    echo "$GHCR_TOKEN" | docker login ghcr.io -u token --password-stdin &> /dev/null
+    # Capture authentication output for error reporting
+    AUTH_OUTPUT=$(echo "$GHCR_TOKEN" | docker login ghcr.io -u token --password-stdin 2>&1)
+    AUTH_RESULT=$?
     
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Authentication failed${NC}"
-        echo "Please verify your token has 'read:packages' permission."
-        echo "You can create a fine-grained token at:"
-        echo "  https://github.com/settings/tokens?type=beta"
+    if [ $AUTH_RESULT -ne 0 ]; then
+        echo -e "${RED}  Authentication failed${NC}"
+        echo ""
+        echo "Error details:"
+        echo "$AUTH_OUTPUT" | grep -i "error" || echo "$AUTH_OUTPUT"
+        echo ""
+        echo "Please verify:"
+        echo "  1. Token has 'read:packages' permission"
+        echo "  2. Token hasn't expired"
+        echo "  3. Token is correctly copied (no spaces)"
+        echo ""
+        echo "Create a Classic token at: https://github.com/settings/tokens"
         exit 1
     fi
     echo -e "${GREEN}  Authentication successful${NC}"
