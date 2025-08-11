@@ -94,10 +94,14 @@ if [[ ! "$GHCR_TOKEN" =~ ^ghp_[a-zA-Z0-9]+$ ]]; then
 fi
 
 # Check if running as root (skip in dry-run)
-if [ "$DRY_RUN" != "true" ] && [ "$EUID" -ne 0 ]; then 
+if [ "$DRY_RUN" != "true" ] && [ "$EUID" -ne 0 ] && [ "$INSTALL_DIR" = "/opt/aeth-core" ]; then 
     echo -e "${YELLOW}Warning: Not running as root${NC}"
-    echo "Some operations may require sudo privileges."
-    echo "Recommended: sudo $0 --token YOUR_TOKEN"
+    echo "The default directory /opt/aeth-core requires sudo privileges."
+    echo ""
+    echo "Options:"
+    echo "  1. Run with sudo: sudo $0 --token YOUR_TOKEN"
+    echo "  2. Use custom directory: $0 --token YOUR_TOKEN --dir ~/aeth-core"
+    echo ""
     read -p "Continue anyway? (y/N): " -n 1 -r
     echo
     [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
@@ -113,6 +117,14 @@ echo -e "${GREEN}╚════════════════════
 echo
 if [ "$INSTALL_DIR" != "/opt/aeth-core" ]; then
     echo -e "${YELLOW}Using custom installation directory: $INSTALL_DIR${NC}"
+    echo
+fi
+
+# Platform detection
+PLATFORM="$(uname -s)"
+if [ "$PLATFORM" = "Darwin" ] && [ "$INSTALL_DIR" = "/opt/aeth-core" ]; then
+    echo -e "${YELLOW}Note: On macOS, /opt requires Docker Desktop file sharing configuration.${NC}"
+    echo -e "${YELLOW}Consider using --dir ~/aeth-core for easier setup.${NC}"
     echo
 fi
 
