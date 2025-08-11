@@ -19,6 +19,7 @@ NC='\033[0m'
 GHCR_TOKEN=""
 VERSION="latest"
 DRY_RUN=false
+INSTALL_DIR="/opt/aeth-core"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -34,6 +35,10 @@ while [[ $# -gt 0 ]]; do
             DRY_RUN=true
             shift
             ;;
+        --dir|-d)
+            INSTALL_DIR="$2"
+            shift 2
+            ;;
         --help|-h)
             echo "AETH-CORE Deployment Tool"
             echo ""
@@ -42,12 +47,14 @@ while [[ $# -gt 0 ]]; do
             echo "Options:"
             echo "  --token, -t TOKEN     GitHub token with read:packages permission (required)"
             echo "  --version, -v VERSION Version to deploy (default: latest)"
+            echo "  --dir, -d PATH        Installation directory (default: /opt/aeth-core)"
             echo "  --dry-run             Test deployment without making changes"
             echo "  --help, -h            Show this help message"
             echo ""
             echo "Examples:"
             echo "  $0 --token ghp_xxxxx"
             echo "  $0 --token ghp_xxxxx --version v1.2.10"
+            echo "  $0 --token ghp_xxxxx --dir ~/aeth-core"
             echo "  $0 --token ghp_xxxxx --dry-run"
             echo ""
             echo "For deployment tokens, contact Sidhen support."
@@ -104,6 +111,10 @@ if [ "$DRY_RUN" = "true" ]; then
 fi
 echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
 echo
+if [ "$INSTALL_DIR" != "/opt/aeth-core" ]; then
+    echo -e "${YELLOW}Using custom installation directory: $INSTALL_DIR${NC}"
+    echo
+fi
 
 # Check Docker installation
 if ! command -v docker &> /dev/null; then
@@ -188,13 +199,16 @@ else
     echo -e "${GREEN}Starting deployment process...${NC}"
     echo
     
+    # Create installation directory if it doesn't exist
+    mkdir -p "$INSTALL_DIR"
+    
     # The deployment container needs:
     # - Docker socket to manage containers on host
     # - Installation directory for configuration files
     # - GitHub token for pulling application image
     docker run --rm -it \
         -v /var/run/docker.sock:/var/run/docker.sock \
-        -v /opt/aeth-core:/opt/aeth-core \
+        -v "$INSTALL_DIR:/opt/aeth-core" \
         -e GHCR_TOKEN="$GHCR_TOKEN" \
         -e APP_VERSION="$VERSION" \
         -e HOST_UID="$(id -u)" \
@@ -230,8 +244,8 @@ elif [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo -e "${GREEN}    Deployment completed successfully!${NC}"
     echo -e "${GREEN}═══════════════════════════════════════${NC}"
     echo
-    echo "Installation directory: /opt/aeth-core"
-    echo "Configuration file: /opt/aeth-core/.env"
+    echo "Installation directory: $INSTALL_DIR"
+    echo "Configuration file: $INSTALL_DIR/.env"
     echo
     echo "Useful commands:"
     echo "  View logs:    docker logs -f aeth-core"
