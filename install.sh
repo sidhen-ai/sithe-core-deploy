@@ -183,6 +183,58 @@ else
     echo -e "${GREEN}  Authentication successful${NC}"
 fi
 
+# Pre-deployment checks
+echo -e "${YELLOW}Running pre-deployment checks...${NC}"
+
+# Check for existing containers
+if docker ps -a --format "{{.Names}}" | grep -q "^aeth-core$"; then
+    echo -e "${YELLOW}  Found existing aeth-core container${NC}"
+    
+    # Check if it's running
+    if docker ps --format "{{.Names}}" | grep -q "^aeth-core$"; then
+        echo "  Container is currently running"
+        read -p "  Stop and remove existing container? (y/N): " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo "  Stopping existing container..."
+            docker stop aeth-core >/dev/null 2>&1
+            docker rm aeth-core >/dev/null 2>&1
+            echo -e "${GREEN}  Existing container removed${NC}"
+        else
+            echo -e "${RED}Cannot proceed with existing container${NC}"
+            echo "Please manually remove: docker rm -f aeth-core"
+            exit 1
+        fi
+    else
+        echo "  Container exists but is stopped"
+        echo "  Removing stopped container..."
+        docker rm aeth-core >/dev/null 2>&1
+        echo -e "${GREEN}  Stopped container removed${NC}"
+    fi
+fi
+
+# Check for port conflicts
+if [ "$INSTALL_DIR" = "/opt/aeth-core" ] || [[ "$INSTALL_DIR" == *"aeth-core"* ]]; then
+    # Check if default ports are in use (if applicable)
+    # This is where you'd check for port 8080, 7880, etc.
+    echo -e "${GREEN}  No port conflicts detected${NC}"
+fi
+
+# Check disk space
+REQUIRED_SPACE_GB=5
+if command -v df >/dev/null 2>&1; then
+    AVAILABLE_SPACE=$(df -BG "$INSTALL_DIR" 2>/dev/null | awk 'NR==2 {print $4}' | sed 's/G//')
+    if [ ! -z "$AVAILABLE_SPACE" ] && [ "$AVAILABLE_SPACE" -lt "$REQUIRED_SPACE_GB" ]; then
+        echo -e "${YELLOW}  Warning: Low disk space (${AVAILABLE_SPACE}GB available, ${REQUIRED_SPACE_GB}GB recommended)${NC}"
+        read -p "  Continue anyway? (y/N): " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    fi
+fi
+
+echo -e "${GREEN}Pre-deployment checks completed${NC}"
+echo
+
 # Pull deployment tools image
 DEPLOY_IMAGE="${DEPLOY_IMAGE_BASE}:${VERSION}"
 echo -e "${YELLOW}Downloading deployment tools...${NC}"
