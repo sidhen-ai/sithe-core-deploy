@@ -136,9 +136,12 @@ if [ "$DRY_RUN" = "true" ]; then
         echo -e "${YELLOW}  [DRY RUN] Token format may be invalid${NC}"
     fi
 else
+    # Temporarily disable exit on error for authentication check
+    set +e
     # Capture authentication output for error reporting
     AUTH_OUTPUT=$(echo "$GHCR_TOKEN" | docker login ghcr.io -u token --password-stdin 2>&1)
     AUTH_RESULT=$?
+    set -e  # Re-enable exit on error
     
     if [ $AUTH_RESULT -ne 0 ]; then
         echo -e "${RED}  Authentication failed${NC}"
@@ -167,9 +170,12 @@ if [ "$DRY_RUN" = "true" ]; then
     echo "  [DRY RUN] Would check image availability"
     DEPLOY_EXIT_CODE=0
 else
+    set +e  # Temporarily disable exit on error
     docker pull "$DEPLOY_IMAGE"
+    PULL_RESULT=$?
+    set -e  # Re-enable exit on error
     
-    if [ $? -ne 0 ]; then
+    if [ $PULL_RESULT -ne 0 ]; then
         echo -e "${RED}Failed to download deployment tools${NC}"
         echo "Possible reasons:"
         echo "  - Invalid version: $VERSION"
