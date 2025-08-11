@@ -18,6 +18,7 @@ NC='\033[0m'
 # Parse arguments
 GHCR_TOKEN=""
 VERSION="latest"
+DRY_RUN=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -29,19 +30,25 @@ while [[ $# -gt 0 ]]; do
             VERSION="$2"
             shift 2
             ;;
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
         --help|-h)
             echo "AETH-CORE Deployment Tool"
             echo ""
-            echo "Usage: $0 --token TOKEN [--version VERSION]"
+            echo "Usage: $0 --token TOKEN [OPTIONS]"
             echo ""
             echo "Options:"
             echo "  --token, -t TOKEN     GitHub token with read:packages permission (required)"
             echo "  --version, -v VERSION Version to deploy (default: latest)"
+            echo "  --dry-run             Test deployment without making changes"
             echo "  --help, -h            Show this help message"
             echo ""
             echo "Examples:"
             echo "  $0 --token ghp_xxxxx"
             echo "  $0 --token ghp_xxxxx --version v1.2.10"
+            echo "  $0 --token ghp_xxxxx --dry-run"
             echo ""
             echo "For deployment tokens, contact Sidhen support."
             exit 0
@@ -56,7 +63,7 @@ done
 
 # Validate token
 if [ -z "$GHCR_TOKEN" ]; then
-    echo -e "${RED}Error: Deployment token is required${NC}"
+    echo -e "${RED}Error: GitHub token is required${NC}"
     echo ""
     echo "Usage: $0 --token YOUR_TOKEN"
     echo ""
@@ -65,8 +72,19 @@ if [ -z "$GHCR_TOKEN" ]; then
     exit 1
 fi
 
-# Check if running as root
-if [ "$EUID" -ne 0 ]; then 
+# Validate token format (basic check)
+if [[ ! "$GHCR_TOKEN" =~ ^ghp_[a-zA-Z0-9]{36}$ ]] && [[ ! "$GHCR_TOKEN" =~ ^github_pat_ ]]; then
+    echo -e "${YELLOW}Warning: Token format may be invalid${NC}"
+    echo "Expected format: ghp_xxxx... (classic) or github_pat_xxxx... (fine-grained)"
+    if [ "$DRY_RUN" != "true" ]; then
+        read -p "Continue anyway? (y/N): " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    fi
+fi
+
+# Check if running as root (skip in dry-run)
+if [ "$DRY_RUN" != "true" ] && [ "$EUID" -ne 0 ]; then 
     echo -e "${YELLOW}Warning: Not running as root${NC}"
     echo "Some operations may require sudo privileges."
     echo "Recommended: sudo $0 --token YOUR_TOKEN"
@@ -77,7 +95,10 @@ fi
 
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║     AETH-CORE Deployment System        ║${NC}"
-echo -e "${GREEN}║           Version: $VERSION${NC}"
+echo -e "${GREEN}║           Version: $VERSION            ║${NC}"
+if [ "$DRY_RUN" = "true" ]; then
+    echo -e "${YELLOW}║         DRY RUN MODE                   ║${NC}"
+fi
 echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
 echo
 
@@ -102,14 +123,26 @@ fi
 
 # Login to GitHub Container Registry
 echo -e "${YELLOW}Authenticating with GitHub Container Registry...${NC}"
-echo "$GHCR_TOKEN" | docker login ghcr.io -u token --password-stdin &> /dev/null
 
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Authentication failed${NC}"
-    echo "Please verify your token has 'read:packages' permission."
-    echo "You can create a fine-grained token at:"
-    echo "  https://github.com/settings/tokens?type=beta"
-    exit 1
+if [ "$DRY_RUN" = "true" ]; then
+    echo "  [DRY RUN] Would authenticate with provided token"
+    # Test token format but don't actually login
+    if [[ "$GHCR_TOKEN" =~ ^ghp_ ]] || [[ "$GHCR_TOKEN" =~ ^github_pat_ ]]; then
+        echo -e "${GREEN}  [DRY RUN] Token format appears valid${NC}"
+    else
+        echo -e "${YELLOW}  [DRY RUN] Token format may be invalid${NC}"
+    fi
+else
+    echo "$GHCR_TOKEN" | docker login ghcr.io -u token --password-stdin &> /dev/null
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Authentication failed${NC}"
+        echo "Please verify your token has 'read:packages' permission."
+        echo "You can create a fine-grained token at:"
+        echo "  https://github.com/settings/tokens?type=beta"
+        exit 1
+    fi
+    echo -e "${GREEN}  Authentication successful${NC}"
 fi
 
 # Pull deployment tools image
@@ -117,40 +150,63 @@ DEPLOY_IMAGE="${DEPLOY_IMAGE_BASE}:${VERSION}"
 echo -e "${YELLOW}Downloading deployment tools...${NC}"
 echo "  Image: $DEPLOY_IMAGE"
 
-docker pull "$DEPLOY_IMAGE"
-
-if [ $? -ne 0 ]; then
-    echo -e "${RED}Failed to download deployment tools${NC}"
-    echo "Possible reasons:"
-    echo "  - Invalid version: $VERSION"
-    echo "  - Network connectivity issues"
-    echo "  - Token permissions insufficient"
-    exit 1
+if [ "$DRY_RUN" = "true" ]; then
+    echo "  [DRY RUN] Would pull deployment tools image"
+    echo "  [DRY RUN] Would check image availability"
+    DEPLOY_EXIT_CODE=0
+else
+    docker pull "$DEPLOY_IMAGE"
+    
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to download deployment tools${NC}"
+        echo "Possible reasons:"
+        echo "  - Invalid version: $VERSION"
+        echo "  - Network connectivity issues"
+        echo "  - Token permissions insufficient"
+        exit 1
+    fi
+    
+    # Run deployment container
+    echo -e "${GREEN}Starting deployment process...${NC}"
+    echo
+    
+    # The deployment container needs:
+    # - Docker socket to manage containers on host
+    # - Installation directory for configuration files
+    # - GitHub token for pulling application image
+    docker run --rm -it \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v /opt/aeth-core:/opt/aeth-core \
+        -e GHCR_TOKEN="$GHCR_TOKEN" \
+        -e APP_VERSION="$VERSION" \
+        -e HOST_UID="$(id -u)" \
+        -e HOST_GID="$(id -g)" \
+        "$DEPLOY_IMAGE"
+    
+    DEPLOY_EXIT_CODE=$?
 fi
 
-# Run deployment container
-echo -e "${GREEN}Starting deployment process...${NC}"
-echo
-
-# The deployment container needs:
-# - Docker socket to manage containers on host
-# - Installation directory for configuration files
-# - GitHub token for pulling application image
-docker run --rm -it \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v /opt/aeth-core:/opt/aeth-core \
-    -e GHCR_TOKEN="$GHCR_TOKEN" \
-    -e APP_VERSION="$VERSION" \
-    -e HOST_UID="$(id -u)" \
-    -e HOST_GID="$(id -g)" \
-    "$DEPLOY_IMAGE"
-
-DEPLOY_EXIT_CODE=$?
-
 # Logout from registry
-docker logout ghcr.io &> /dev/null
+if [ "$DRY_RUN" != "true" ]; then
+    docker logout ghcr.io &> /dev/null
+fi
 
-if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
+if [ "$DRY_RUN" = "true" ]; then
+    echo
+    echo -e "${GREEN}═══════════════════════════════════════${NC}"
+    echo -e "${GREEN}    DRY RUN completed successfully!${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════${NC}"
+    echo
+    echo "What would have happened:"
+    echo "  1. Authenticated with GitHub Container Registry"
+    echo "  2. Downloaded deployment tools image"
+    echo "  3. Run interactive configuration"
+    echo "  4. Downloaded application image"
+    echo "  5. Created service configuration"
+    echo "  6. Started AETH-CORE service"
+    echo
+    echo "To perform actual deployment, run without --dry-run"
+elif [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo
     echo -e "${GREEN}═══════════════════════════════════════${NC}"
     echo -e "${GREEN}    Deployment completed successfully!${NC}"
