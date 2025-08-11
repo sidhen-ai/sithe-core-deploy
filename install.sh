@@ -73,9 +73,12 @@ if [ -z "$GHCR_TOKEN" ]; then
 fi
 
 # Validate token format (basic check)
-if [[ ! "$GHCR_TOKEN" =~ ^ghp_[a-zA-Z0-9]{36}$ ]] && [[ ! "$GHCR_TOKEN" =~ ^github_pat_ ]]; then
+if [[ ! "$GHCR_TOKEN" =~ ^ghp_[a-zA-Z0-9]{36}$ ]]; then
     echo -e "${YELLOW}Warning: Token format may be invalid${NC}"
-    echo "Expected format: ghp_xxxx... (classic) or github_pat_xxxx... (fine-grained)"
+    echo "Expected format: ghp_xxxx... (Classic Personal Access Token)"
+    echo ""
+    echo "Note: Fine-grained tokens do not support package access yet."
+    echo "Please use a Classic token with 'read:packages' scope."
     if [ "$DRY_RUN" != "true" ]; then
         read -p "Continue anyway? (y/N): " -n 1 -r
         echo
