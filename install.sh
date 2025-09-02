@@ -1,13 +1,13 @@
 #!/bin/bash
-# AETH-CORE Deployment Bootstrap
+# SITHE-CORE Deployment Bootstrap
 # This script downloads and runs the deployment tools
 # Usage: ./install.sh --token YOUR_TOKEN [--version VERSION]
 
 set -e
 
 # Configuration
-DEPLOY_IMAGE_BASE="ghcr.io/sidhen-ai/aeth-core-deploy"
-APP_IMAGE_BASE="ghcr.io/sidhen-ai/aeth-core"
+DEPLOY_IMAGE_BASE="ghcr.io/sidhen-ai/sithe-core-deploy"
+APP_IMAGE_BASE="ghcr.io/sidhen-ai/sithe-core"
 
 # Colors
 RED='\033[0;31m'
@@ -19,7 +19,7 @@ NC='\033[0m'
 GHCR_TOKEN=""
 VERSION="latest"
 DRY_RUN=false
-INSTALL_DIR="/opt/aeth-core"
+INSTALL_DIR="/opt/sithe-core"
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -40,21 +40,21 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --help|-h)
-            echo "AETH-CORE Deployment Tool"
+            echo "SITHE-CORE Deployment Tool"
             echo ""
             echo "Usage: $0 --token TOKEN [OPTIONS]"
             echo ""
             echo "Options:"
             echo "  --token, -t TOKEN     GitHub token with read:packages permission (required)"
             echo "  --version, -v VERSION Version to deploy (default: latest)"
-            echo "  --dir, -d PATH        Installation directory (default: /opt/aeth-core)"
+            echo "  --dir, -d PATH        Installation directory (default: /opt/sithe-core)"
             echo "  --dry-run             Test deployment without making changes"
             echo "  --help, -h            Show this help message"
             echo ""
             echo "Examples:"
             echo "  $0 --token ghp_xxxxx"
             echo "  $0 --token ghp_xxxxx --version v1.2.10"
-            echo "  $0 --token ghp_xxxxx --dir ~/aeth-core"
+            echo "  $0 --token ghp_xxxxx --dir ~/sithe-core"
             echo "  $0 --token ghp_xxxxx --dry-run"
             echo ""
             echo "For deployment tokens, contact Sidhen support."
@@ -94,13 +94,13 @@ if [[ ! "$GHCR_TOKEN" =~ ^ghp_[a-zA-Z0-9]+$ ]]; then
 fi
 
 # Check if running as root (skip in dry-run)
-if [ "$DRY_RUN" != "true" ] && [ "$EUID" -ne 0 ] && [ "$INSTALL_DIR" = "/opt/aeth-core" ]; then 
+if [ "$DRY_RUN" != "true" ] && [ "$EUID" -ne 0 ] && [ "$INSTALL_DIR" = "/opt/sithe-core" ]; then 
     echo -e "${YELLOW}Warning: Not running as root${NC}"
-    echo "The default directory /opt/aeth-core requires sudo privileges."
+    echo "The default directory /opt/sithe-core requires sudo privileges."
     echo ""
     echo "Options:"
     echo "  1. Run with sudo: sudo $0 --token YOUR_TOKEN"
-    echo "  2. Use custom directory: $0 --token YOUR_TOKEN --dir ~/aeth-core"
+    echo "  2. Use custom directory: $0 --token YOUR_TOKEN --dir ~/sithe-core"
     echo ""
     read -p "Continue anyway? (y/N): " -n 1 -r
     echo
@@ -108,23 +108,23 @@ if [ "$DRY_RUN" != "true" ] && [ "$EUID" -ne 0 ] && [ "$INSTALL_DIR" = "/opt/aet
 fi
 
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║     AETH-CORE Deployment System        ║${NC}"
+echo -e "${GREEN}║     SITHE-CORE Deployment System        ║${NC}"
 echo -e "${GREEN}║           Version: $VERSION            ║${NC}"
 if [ "$DRY_RUN" = "true" ]; then
     echo -e "${YELLOW}║         DRY RUN MODE                   ║${NC}"
 fi
 echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
 echo
-if [ "$INSTALL_DIR" != "/opt/aeth-core" ]; then
+if [ "$INSTALL_DIR" != "/opt/sithe-core" ]; then
     echo -e "${YELLOW}Using custom installation directory: $INSTALL_DIR${NC}"
     echo
 fi
 
 # Platform detection
 PLATFORM="$(uname -s)"
-if [ "$PLATFORM" = "Darwin" ] && [ "$INSTALL_DIR" = "/opt/aeth-core" ]; then
+if [ "$PLATFORM" = "Darwin" ] && [ "$INSTALL_DIR" = "/opt/sithe-core" ]; then
     echo -e "${YELLOW}Note: On macOS, /opt requires Docker Desktop file sharing configuration.${NC}"
-    echo -e "${YELLOW}Consider using --dir ~/aeth-core for easier setup.${NC}"
+    echo -e "${YELLOW}Consider using --dir ~/sithe-core for easier setup.${NC}"
     echo
 fi
 
@@ -187,34 +187,34 @@ fi
 echo -e "${YELLOW}Running pre-deployment checks...${NC}"
 
 # Check for existing containers
-if docker ps -a --format "{{.Names}}" | grep -q "^aeth-core$"; then
-    echo -e "${YELLOW}  Found existing aeth-core container${NC}"
+if docker ps -a --format "{{.Names}}" | grep -q "^sithe-core$"; then
+    echo -e "${YELLOW}  Found existing sithe-core container${NC}"
     
     # Check if it's running
-    if docker ps --format "{{.Names}}" | grep -q "^aeth-core$"; then
+    if docker ps --format "{{.Names}}" | grep -q "^sithe-core$"; then
         echo "  Container is currently running"
         read -p "  Stop and remove existing container? (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             echo "  Stopping existing container..."
-            docker stop aeth-core >/dev/null 2>&1
-            docker rm aeth-core >/dev/null 2>&1
+            docker stop sithe-core >/dev/null 2>&1
+            docker rm sithe-core >/dev/null 2>&1
             echo -e "${GREEN}  Existing container removed${NC}"
         else
             echo -e "${RED}Cannot proceed with existing container${NC}"
-            echo "Please manually remove: docker rm -f aeth-core"
+            echo "Please manually remove: docker rm -f sithe-core"
             exit 1
         fi
     else
         echo "  Container exists but is stopped"
         echo "  Removing stopped container..."
-        docker rm aeth-core >/dev/null 2>&1
+        docker rm sithe-core >/dev/null 2>&1
         echo -e "${GREEN}  Stopped container removed${NC}"
     fi
 fi
 
 # Check for port conflicts
-if [ "$INSTALL_DIR" = "/opt/aeth-core" ] || [[ "$INSTALL_DIR" == *"aeth-core"* ]]; then
+if [ "$INSTALL_DIR" = "/opt/sithe-core" ] || [[ "$INSTALL_DIR" == *"sithe-core"* ]]; then
     # Check if default ports are in use (if applicable)
     # This is where you'd check for port 8080, 7880, etc.
     echo -e "${GREEN}  No port conflicts detected${NC}"
@@ -272,7 +272,7 @@ else
     # - GitHub token for pulling application image
     docker run --rm -it \
         -v /var/run/docker.sock:/var/run/docker.sock \
-        -v "$INSTALL_DIR:/opt/aeth-core" \
+        -v "$INSTALL_DIR:/opt/sithe-core" \
         -e GHCR_TOKEN="$GHCR_TOKEN" \
         -e APP_VERSION="$VERSION" \
         -e HOST_UID="$(id -u)" \
@@ -299,7 +299,7 @@ if [ "$DRY_RUN" = "true" ]; then
     echo "  3. Run interactive configuration"
     echo "  4. Downloaded application image"
     echo "  5. Created service configuration"
-    echo "  6. Started AETH-CORE service"
+    echo "  6. Started SITHE-CORE service"
     echo
     echo "To perform actual deployment, run without --dry-run"
 elif [ $DEPLOY_EXIT_CODE -eq 0 ]; then
@@ -312,9 +312,9 @@ elif [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo "Configuration file: $INSTALL_DIR/.env"
     echo
     echo "Useful commands:"
-    echo "  View logs:    docker logs -f aeth-core"
-    echo "  Stop service: docker stop aeth-core"
-    echo "  Start service: docker start aeth-core"
+    echo "  View logs:    docker logs -f sithe-core"
+    echo "  Stop service: docker stop sithe-core"
+    echo "  Start service: docker start sithe-core"
     echo "  Update:       Run this script again with new version"
 else
     echo

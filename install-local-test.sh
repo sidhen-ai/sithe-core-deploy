@@ -5,8 +5,8 @@
 set -e
 
 # Configuration
-DEPLOY_IMAGE_BASE="ghcr.io/sidhen-ai/aeth-core-deploy"
-APP_IMAGE_BASE="ghcr.io/sidhen-ai/aeth-core"
+DEPLOY_IMAGE_BASE="ghcr.io/sidhen-ai/sithe-core-deploy"
+APP_IMAGE_BASE="ghcr.io/sidhen-ai/sithe-core"
 
 # Colors
 RED='\033[0;31m'
@@ -29,11 +29,11 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --help|-h)
-            echo "AETH-CORE Local Test Deployment"
+            echo "SITHE-CORE Local Test Deployment"
             echo ""
             echo "Usage: $0 --token TOKEN [--version VERSION]"
             echo ""
-            echo "This version uses ~/aeth-core-test instead of /opt/aeth-core"
+            echo "This version uses ~/sithe-core-test instead of /opt/sithe-core"
             echo "Perfect for testing on macOS without Docker file sharing issues"
             exit 0
             ;;
@@ -52,10 +52,10 @@ if [ -z "$GHCR_TOKEN" ]; then
 fi
 
 # Use home directory for testing
-INSTALL_DIR="$HOME/aeth-core-test"
+INSTALL_DIR="$HOME/sithe-core-test"
 
 echo -e "${GREEN}╔════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║  AETH-CORE Local Test Deployment       ║${NC}"
+echo -e "${GREEN}║  SITHE-CORE Local Test Deployment       ║${NC}"
 echo -e "${GREEN}║  Version: $VERSION                     ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════╝${NC}"
 echo
@@ -115,7 +115,7 @@ echo
 # Run with modified volume mount
 docker run --rm -it \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "$INSTALL_DIR:/opt/aeth-core" \
+    -v "$INSTALL_DIR:/opt/sithe-core" \
     -e GHCR_TOKEN="$GHCR_TOKEN" \
     -e APP_VERSION="$VERSION" \
     -e HOST_UID="$(id -u)" \
@@ -138,12 +138,12 @@ if [ $DEPLOY_EXIT_CODE -eq 0 ]; then
     echo
     echo "Next steps:"
     echo "1. Review configuration: cat $INSTALL_DIR/.env"
-    echo "2. Check container: docker ps | grep aeth-core"
-    echo "3. View logs: docker logs -f aeth-core"
+    echo "2. Check container: docker ps | grep sithe-core"
+    echo "3. View logs: docker logs -f sithe-core"
     echo
     echo "To clean up test:"
-    echo "  docker stop aeth-core"
-    echo "  docker rm aeth-core"
+    echo "  docker stop sithe-core"
+    echo "  docker rm sithe-core"
     echo "  rm -rf $INSTALL_DIR"
 else
     echo

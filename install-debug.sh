@@ -3,7 +3,7 @@
 set -x  # Enable debug output
 
 # Configuration
-DEPLOY_IMAGE_BASE="ghcr.io/sidhen-ai/aeth-core-deploy"
+DEPLOY_IMAGE_BASE="ghcr.io/sidhen-ai/sithe-core-deploy"
 VERSION="latest"
 
 # Colors

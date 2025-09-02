@@ -1,12 +1,12 @@
-# AETH-CORE Deployment Tool
+# SITHE-CORE Deployment Tool
 
-Automated deployment system for AETH-CORE.
+Automated deployment system for SITHE-CORE.
 
 ## Quick Start
 
 ```bash
 # Download the installer
-curl -O https://raw.githubusercontent.com/sidhen-ai/aeth-core-deploy/main/install.sh
+curl -O https://raw.githubusercontent.com/sidhen-ai/sithe-core-deploy/main/install.sh
 chmod +x install.sh
 
 # Run deployment
