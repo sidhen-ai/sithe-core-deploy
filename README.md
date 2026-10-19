@@ -1,40 +1,39 @@
 # SITHE-CORE Deployment Tool
 
-Automated deployment system for SITHE-CORE.
+> **Not maintained (last change 2025-09).** Superseded: sithe-core no longer
+> runs as a self-hosted Docker container. It runs as a worker started by the
+> SIDHEN platform, and a SIDHEN device runs its services through cairn-shell.
+> Nothing in the current SIDHEN deployment uses this repository. Kept for
+> history; do not use it for new installs.
 
-## Quick Start
+A bootstrap script that ran SITHE-CORE (the SIDHEN voice agent worker) in
+Docker on a partner's machine.
 
-```bash
-# Download the installer
-curl -O https://raw.githubusercontent.com/sidhen-ai/sithe-core-deploy/main/install.sh
-chmod +x install.sh
+## What it did
 
-# Run deployment
-sudo ./install.sh --token YOUR_TOKEN
-```
+`install.sh`:
 
-## Requirements
+1. Logs in to the GitHub Container Registry with a token that has
+   `read:packages`.
+2. Checks Docker is running, removes an existing `sithe-core` container if you
+   agree, and warns on low disk space.
+3. Pulls the deployment-tools image `ghcr.io/sidhen-ai/sithe-core-deploy` and
+   runs it with the Docker socket and the install directory mounted. That
+   image asks for configuration, pulls the `sithe-core` image and starts the
+   `sithe-core` container.
 
-- Linux (Ubuntu 20.04+, CentOS 7+, Debian 10+) or macOS
-- Docker and Docker Compose
-- Deployment token (contact Sidhen support)
+The images need a token to pull, and sithe-core has not published a new
+release image since 2025, so the script is not expected to work today.
 
-## Options
+## Files
 
-```bash
-# Deploy latest version
-./install.sh --token YOUR_TOKEN
-
-# Deploy specific version
-./install.sh --token YOUR_TOKEN --version v1.2.10
-
-# Show help
-./install.sh --help
-```
-
-## Support
-
-For deployment tokens and support, please contact Sidhen.
+- `install.sh` — the installer. Options: `--token` (required), `--version`
+  (default `latest`), `--dir` (default `/opt/sithe-core`), `--dry-run`,
+  `--help`.
+- `install-local-test.sh` — the same flow using a directory under your home,
+  for testing on macOS.
+- `install-debug.sh` — logs in and pulls the deployment image with shell
+  tracing on.
 
 ## License
 
